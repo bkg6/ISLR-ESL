@@ -1,0 +1,685 @@
+---
+title: "ISLR_NOTES"
+author: "@BKG_6"
+date: "December 29, 2015"
+output: html_document
+---
+
+
+
+## 4. CLASSIFICATION
+
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library("ISLR"); data("Default"); library(ggplot2); library(plotly);
+library(data.table); 
+```
+
+```{r}
+data("Default")
+dim(Default)
+head(Default)
+dt <- data.table(Default)
+dt[, .N, by = default]
+ggplot(Default, aes(x = balance, y = income, color = default)) + geom_point(aes(alpha = 0.8))
+ggplot(Default, aes(x = factor(default), y = balance)) + geom_boxplot(aes(fill = factor(default)))
+```
+
+It is inferred fron the graph that those with high balance have defferd the credit card and those with low balance have not. The income of those defaluting and those not defaulting is in the same range
+
+#### Reasons of not using Linear Regression
+
+* Unfortunately, in general there is no natural way to
+convert a qualitative response variable with more than two levels into a
+quantitative response that is ready for linear regression. 
+* Curiously, it turns out that
+the classifications that we get if we use linear regression to predict a binary
+response will be the same as for the linear discriminant analysis (LDA).
+* the dummy variable approach cannot be easily extended to
+accommodate qualitative responses with more than two levels. It will asume that the difference between some variables is teh same as other variables
+* The probability can be negative for some values and also > 1. Hence linear regression cannot be performed on classification.
+
+> Any time a straight line is fit to a binary response that is coded as 0 or 1, in principle we can always predict p(X) < 0 for some values of X
+and p(X) > 1 for others (unless the range of X is limited).
+
+> To avoid this problem, we must model p(X) using a function that gives
+outputs between 0 and 1 for all values of X.
+
+### Estimating the regression coefficients
+* We use the maximum likelihood function for estimatimg teh logistic regression coefficients. 
+* Maximum likelihood is used to fit many non0linear functions
+* The paramters are set in sucha  way that the classification is done efficiently i.e values close to 1 or zero in case of binary classification
+
+In logistic regression one unit increase in the predictor value will result in log(odds) of the response
+
+```{r}
+logreg <- glm(default~balance, data = Default, family = binomial)
+summary(logreg)$coefficients
+```
+The z-statistic above plays teh same role as the t-statistic in linear regression
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+data(Smarket)
+library(ggplot2); library(dplyr); library(GGally)
+```
+
+
+```{r, fig.height= 13, fig.width= 13}
+str(Smarket)
+head(Smarket)
+select <- dplyr::select
+ggpairs(data = Smarket, aes(color = Direction))
+cor(select(Smarket, -9))
+```
+
+```{r}
+Smarket %>% group_by(Year) %>% summarize(sum(Volume))
+Smarket %>% group_by(Year) %>% summarize(sum1 = sum(Volume)) %>% ggplot(aes(x = Year, y = sum1)) + geom_line(col = "red") + geom_point(col = "blue")
+```
+
+```{r, fig.height= 10, fig.width= 10}
+glm.fit <- glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume, family = "binomial", data = Smarket)
+glm.predict <- predict(glm.fit, type = "response")
+glm.predict  <- data.frame(glm.predict)
+glm.predict <- glm.predict %>% mutate(Direction = ifelse(glm.predict > 0.5, "Up", "Down"))
+table(glm.predict$Direction, Smarket$Direction)
+```
+
+
+
+When the observations are drawn from a aguassian distribution with common covariance matrix then LDA is prefferred ove LogR. If these conditons are not met then LogR givesbetter results
+
+In knn no assumptions are made about the boundaries. Hence when the decision boundary is highly nonlinear knn gives better performance over the other two but it does not give info whether which variable is more importnat than teh other
+
+QDA is not as flexible as KNN but can be an effective comprimise between KNN and LDA/LogR.
+
+
+
+When decision boundaries are linear approaches like LDA/LogR perform on the same level where as in a moderately no-linear case QDA may give better results. for an non-parametric approach KNN can outperform the other methods
+
+## Linear Discriminant Analysis
+
+> It is based on gaussian density. The variances are equal in each class and hence get cancelled in teh discriminant function. Hence it is called Linear Discriminant Analysis
+
+#### Reasons to use LDA over multivariate linear regression
+
+* If there is a perfect variables that can be used to classify perfectly logistic regression becomes unstable. The parameters tend to move to infinity. This is because logistic regresssion was developed by biologists and people working in medical field where we cannot find such parameters
+
+* When the distibutiond of predictors X are normal then LDA is more stable than logistic regression
+
+
+
+> Both  QDA and LDA breakdown with large number of variables and in that case naive bayes becomes more attractive
+
+> We cannot use LDA if there are high number of variables.
+
+If there are K classes to classified K-1 dimesnional plot can be used to distinguish them . we can find teh best two dimensional plot to represent the K-1 classes if they are more than 2 but we will have to comprimise on teh magnitude of error.
+
+> The largest probability to which it is assigned is regarded as the winning unit.
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(GGally)
+```
+
+```{r, fig.height= 10, fig.width= 10}
+ggpairs(iris, aes(color = Species, alpha = 0.8))
+```
+
+Training errors are always less than test errors. Inshort they are overly optimistic because there is a chance of overfitting. If the training test are small then the chances for overfitting are quite high
+
+
+FALSE POSITIVES: class of negative examples that are classfief as positive
+
+FALSE NEGATIVES: class of posotive examples that are classified as negatives
+
+We can change the  threshold by changinf the probability. In order to reduce the false negative rates we have to devrease teh threshold to 0.1 or less
+
+
+> In classification u can tolerate a bias if u canget good classification and in return you get much less variance in return. hence naive bayes is useful in classification
+
+
+
+## Multiple Discriminant Analysis
+
+MDA is for more than 3 class classification
+
+MDA analyzes patterns and projects them onto a two dimensionl subspace that can give a better seperatuon of teh classes. The idea is to reduce the dimensions with minimum loss of information. There are two important aims of MDA
+
+1. Finding the component axis thaa maximize the variance
+2. Maximize the seperation of the classes
+
+Both Multiple Discriminant Analysis (MDA) and Principal Component Analysis (PCA) are linear transformation methods and closely related to each other. In PCA, we are interested to find the directions (components) that maximize the variance in our dataset, where in MDA, we are additionally interested to find the directions that maximize the separation (or discrimination) between different classes (for example, in pattern classification problems where our dataset consists of multiple classes. In contrast two PCA, which ignores the class labels).
+
+n other words, via PCA, we are projecting the entire set of data (without class labels) onto a different subspace, and in MDA, we are trying to determine a suitable subspace to distinguish between patterns that belong to different classes. Or, roughly speaking in PCA we are trying to find the axes with maximum variances where the data is most spread (within a class, since PCA treats the whole data set as one class), and in MDA we are additionally maximizing the spread between classes.
+
+
+
+
+## Comparision of the classification methods
+
+* When the observations are drawn from a aguassian distribution with common covariance matrix then LDA is prefferred ove LogR. If these conditons are not met then LogR givesbetter results
+
+* In knn no assumptions are made about the boundaries. Hence when the decision boundary is highly nonlinear knn gives better performance over the other two but it does not give info whether which variable is more importnat than teh other
+
+* QDA is not as flexible as KNN but can be an effective comprimise between KNN and LDA/LogR.
+
+* When decision boundaries are linear approaches like LDA/LogR perform on the same level where as in a moderately no-linear case QDA may give better results. for an non-parametric approach KNN can outperform the other methods
+
+
+
+
+
+
+
+# 5. Cross Validation & Resampling
+
+The key concepts remain teh same irrespective of the response being qualitatve or quantitative
+
+* The trainig data is too optimihestic. The morewe fit the data the less we get the training error. But the test data will be showing a lot of errors
+
+* These resampling methods give us the SD and bias of the estimates
+
+* The training error does not tell anything about overfitting because its including the same data. The higher the parmateers the better it looks
+
+
+> The ingedrients of the predicitons error are BIAS & VARIANCE
+
+* Bias: How far the average model is from the truth
+* Variance: How much the estimate varies around its average
+
+
+> when we dont fit too hard the bias is low and the variance is high as the number of parmaters are low but as we move towards the right, the bias goes down as the model can adapt more to the subtelties in the data but the variance goes up as there are more number of paramters
+
+> The point at which the prediciton error is minimum is the tradeoff point. And this is reffered to as the bias variance tradeoff.
+
+
+#### Validation:
+
+Depending on the split the error rates varies by a large extent. This vallidates that the split plays a major role in determinign the error
+
+Validation can be used for two insights:
+* what order polynomial is the best[How  good the model is?]
+* How good the error is at teh end of the fitting process
+
+
+
+#### Cross Validation
+
+* In LOOCV, hi indicates how much influence teh observation has on its own fit. So if has good influence then hi penalizes the residual by dividing it by $1-hi$
+
+* LOOCV does ot shake up the data as each one of training sets  looks like the otehr and when we take out the avergae of errors which are highly correlated is with high variance.Hence it suggested to use KNN iwth K = 5/10
+
+* Picking K is also a tradeoff for bias-variance tradeoff
+
+* With K=10 there is not much variation in teh MSE with different splits and hence it does and good job commpared to K=1
+
+
+##### Issues with cross-validation
+
+* Since each model is N/k times of the original dataset and hence tends to be with high bias. When we use LOOCV then it has high variance. Therefore K=5/10 can be a good bias variance tradeoff
+
+## Bootsrap
+
+> The SE of an estimator is the SD of the sampling distribution. If youa re able to recompute the estimate many times the SD is teh SE
+
+
+
+> Confidence Interval :  If we were to perform experiment many times than the confint will contain the true value of estimates 95% of times
+
+The bootstrap percentile is the simplest way of constructing confidence interval for Bootsrap
+
+
+#### Comparision betweem Bootstrap and Cross Validation
+
+* In Cross Validation you do not have a overlap between the validation and the trainig sets which is crucial for its success
+
+* In Bootsrap if each sample is considered as training dataset and is validated over the original dataset there is a significant anount of overlap. About 2/3rd of the observations are generally same
+
+
+# 6. Model Selection
+
+```{r}
+library(ISLR); library(leaps); library(ggplot2)
+data(Hitters)
+subsetfit <- regsubsets(Salary ~ ., data = Hitters)
+summary(subsetfit)
+subsetfit <- regsubsets(Salary ~ ., data = Hitters, nvmax = 19)
+names(summary(subsetfit))
+k <- summary(subsetfit)
+
+```
+
+
+
+
+# 7. Moving beyond Linearity
+
+> Linear Splines: Piece wise linear model continouis at each knot
+
+* Basis Functions: Transformation of the variables also called as truncated power function
+
+### Cubic Splines
+
+Piece wise cubic polynomials with continous derivatives  upto the order 2 at each knot. The truncated power functions will be raised to the power 3 The idea is the same as linear but  it is cubic in this case
+
+### Natural Cubic Splines
+
+The boundaries are made linear  Two extra constants at the boundaries i.e  the constarints arent left idle at the boundaries
+* values of x smaller than the smallest knot
+
+* values of x greater than the largest knot
+
+
+> For same number of degrees of freedom in the model you can get extra knots in the model
+
+* The S.E are a bit diff at the ending but the fitted function hardly differs
+
+> A cubic spline with K knots has `k+4` degrees of freedom where as a natural spline with K knots has K degrees of freedom
+
+Natural cubic Splines produce more stable estimates and have narrower confidence intervals than cubic splines 
+
+
+#### Smoothing Splines :  They are a way of fitting splines without having to worry about knots
+
+> The point here is to fit a function that minimizes the RSS and is smooth i.e not woefully overfit.
+
+* We do not have to worry abt the knots
+
+* We add second derivatives squared and integrated over the whole domain to the RSS. The second derivatives constarins the functions over which we search to be smooth. 
+
+* They search for the wiggles in the function i.e adds up all the non linear in teh function and lambda is the tuning parametercalled tuning parameter or roughness penalty greater than zero. 
+
+* The samller the lambda the higher the penalty and more wiggly the function can be
+
+
+
+### Smoothing Splines
+
+* There are knots at each unique values of x and even though there are many unique x values the effective degrees of freedom are not x. 
+* They are quite less and can be calculated by the formula which is teh sum of teh diagonal elements of teh matrix S
+
+
+```{r}
+require(ISLR)
+data(Wage)
+fit1 <- lm(wage ~ poly(age, 4), data = Wage)
+summary(fit1)
+## Using raw and not orthogonal values
+fit2=lm(wage~poly(age,4,raw=T),data=Wage) 
+summary(fit2)
+# Both fit2a and fit2b are same as the fit2
+fit2a=lm(wage~age+I(age^2)+I(age^3)+I(age^4),data=Wage)
+fit2b=lm(wage~cbind(age,age^2,age^3,age^4),data=Wage)
+agelims=range(Wage$age)
+age.grid=seq(from=agelims[1],to=agelims[2])
+preds=predict(fit1,newdata=list(age=age.grid),se=TRUE)
+se.bands=data.frame(cbind(preds$fit+2*preds$se.fit,preds$fit-2*preds$se.fit))
+head(se.bands)
+
+g <- ggplot() +  geom_point(data = Wage, aes(age, wage)) +xlim(18,80)
+g
+g2 <- g + geom_line(aes(x = age.grid, y = preds$fit, color = "red"), size = 1.5)
+g2
+g3 <- g2 + geom_line(data = se.bands, aes(x = age.grid, y = se.bands[,1]), linetype = 2, color = "blue") + geom_line(data = se.bands, aes(x = age.grid, y = se.bands[,2]), linetype = 2, color = "blue")
+g3 + theme_classic()
+
+```
+
+
+
+# 8.Treebased Methods
+
+> The main advantage of bagging and random forest is to bring down the correlation.
+
+## Bagging
+
+Bagging is a process of reducing the variance of a statistical method and is especially used in the context of decision trees
+
+Averaging reduces the variance by the no of observations but this is not practically possible bcz we do not have access to multiple training sets.
+
+Hence we bootstrap( which is to take multiple samples froma  single training set with replacement), develop the model on the different samples and take the average of all the predicitons due to the different models. This process is called __bagging__
+
+> So each tree devloped due to bootsrapping is asked about its prediction adn then all the values are averaged. In classification the majority is taken instead of average
+
+We do not need to prune the trees in case of bagging and hence therefore we do not introduce any bias 
+
+
+### Out of bag error
+
+This is a way of estimating the test error to the closest value. Similar to bootstrapping if we specify 3 folds 2/3rd of the data is taken and is trained where as the remaining one third is used as test data. The avearge value for all the 3 different samples is taken is used to give the test error.
+
+
+## Random Forest
+
+> Rnadom forest remove the correlation betweent he variables which is present in bagging
+
+The principle is similar to bagging where we bootstrap to take different samples from a training dataset. Instead of averaging the variances we take the average by developing different trees which consider only m predictor at a time.
+
+In general `m >= p^0.5` m is above the squareroot vallue of p. 
+
+
+We select the variable which have more variance compared to other bcz they can give better values on test data. We use the overall variance to select the 500 genes from 4700 genes and not the classes. If we had used the classes then would have created bias in our sampling.
+
+We need more number of trees as a single tree can have a large error rate especially when the no of classes are high. This decreases as we increase the number of forests and is optimal when `m = (p)^0.5` than when `m = (p)/2` or `m = p` which is nothing but bagging
+
+
+> After a certain number of trees are developed the variance is brought down and upn furthe increase in the trees it will overfit the data and hurt the model.
+
+
+## Boosting
+
+The idea behind boosting is to combine a lot of weak classifiers to produce a powerful committe. Classifiers are tained on the weighted versions of the dataset, and then combined to produce a final prediction. the predictions from all of them are then combined to produce a weighted majority vote to get the final prediction
+
+Similar to bagging and random forests gives the average of the prediction on trees but there are fundamental differences
+
+> The trees that are averaged are equivalent in RF and bagging whereas in bagging the trees that are added sequentially to improve the performance based on the previous trees
+
+The process is:
+1. Take a function `f(x)` and equate iot to zero
+2. Divide the training data into B splits i.e for bootstrapping. 
+3. Fit a tree for the training data for each `B`and its rediuals adn update the function by adding that tree  into the current model
+4. While adding in we shrunk it down by a factor lambda which is pretty small and the resiuals are updated
+5. Finally the boosted model will be a shrunked boosted trees for B training data samples
+
+> These trees are not independent of each other like in RF and bagging and they are improving upon the residuals left over the previous trees
+
+Unlike in regular tree fitting we can overfit the data but here we update the residuals in already fitted tree by updating upon teh residuals
+
+The shrinkage paramter lambda and terminal nodes `d` slow down the process and allow to attack residuals with different trees
+
+> Instead of grabbing a lot of signal with a single tree we slowly learn from different trees in small parts shrinking each time
+
+If `d  = 1` it doesnt involve interactions between variables For `d=2` there will be pair wise interactions
+
+
+
+```{r, echo= F, warning=F}
+library(ISLR)
+library(tree)
+```
+
+```{r}
+data("Carseats")
+str(Carseats)
+high <- iflese(Carseats$Sales > 8, "y", "n")
+Carseats <- data.frame(Carseats, high)
+str(Carseats)
+dt <- tree(high~. -Sales, data = Carseats)
+plot(dt); text(dt)
+```
+
+```{r}
+k <- sample(1:400, 250)
+z <- 1:400
+z[-k]
+
+train <- Carseats[k,]
+test <- Carseats[z[-k],]
+dt <- tree(high~. -Sales, data = train)
+tree.predict <- predict(dt, test, type = "class")
+table(tree.predict, test$high)
+```
+
+
+
+
+
+Each observation is predicetd using the average of variables that arent used
+
+
+# 9. Support Vector Machines
+
+SVM present a linear solution to the widely used logsitic regression and linear regression, maximizing the distacne between the classes invlolved. The concept of maximizing the distance betweent he two classes implies that if new data is presented then it will make better classification
+
+Find the plane that seperates tha features and classes. One of teh best way to do classification
+
+> This is a classic exmple of how computer scientists would approach the problem. There is no probability model instead a hyperplane that seperates the classes
+
+### What is a hyper plane
+
+* A hyperplane is a linear equation equal to zero
+
+* A hyperplane in p dimensions if we have p variables is a flat affine subspace of dimension p-1. If the number of variables are two then the hyperplane will be a line.
+
+* The beta vector(i.e the coefficients vector excluding the intercept) is called the normal vector perpendicular to the hyperplane and the points
+
+* we project the points onto the noraml orthogonally and the distance from the origin to the point of projection is taken. The points on the hyper plane are at the same distacen as the value of the intercept
+
+> The direction vectors are the unit vectors so this implies that the distance we are measuring the eucleadian distance
+
+
+### Maximal margin classifier
+
+If we have more than one classifier which does a good job in classification what is teh best one to choose. We go with the concept of maximum margin classifier i.e
+
+
+1. we find the classifier that has the maximum distance from both the classes
+2. SVM concetrate on making the best classifier first and then on maximizing the margin.
+3.If a single outlier is effecting the classifier it is neglected and hence SVM are robust to outliers
+
+* The reason behind this concept is that if the gap is more with the training data then it will also maintain that gap with the test data as well.
+
+* Even though in statistics point of view this seems to be overfitting in general this perform very well. The general steps to be followed in maximal margin classifier are:
+    1. Ensure that the sum of squared coefficients other than intercepts(i.e normal vector) is 1. i.e unit vector is created.
+    2. The hyperplane is multiplied with the distance to form the margin and is used to maiximize the margin of teh multiplication for all points in the plane
+    3. by this we find the classifier that has the maximum margin or minimum M units of distance for every point
+  
+  
+
+  
+  
+
+### Unseperable data
+
+* We cannot fit a hyper  plane through the data as it oftern gets overlapped. When N is far greater than no of variables then we cannot create a hyperplane
+
+* In cases where the No of observations are less than variables especially in cases related to genomics there we can use a hyperplane which is linear in nature
+
+* If there are data points which are nosiy i.e the entire model can be effected with the prescence of that datapoint then even though an hyperplane can be created this will be a poor maximum margin classifier
+
+In  cases like these we can relax teh criteria of maximum margin classifier and maximize something called as a soft margin
+
+> We extend the margin to more than the least distance and call this a soft margin. This is similar to regularization as we are extending the margin it gets determined more than just close points
+
+We multiply the minimum margin by a slack and this slack is accounted within a budget i.e the total slack is within the given value of the budget. Subject to this budget we get the maximizxed margin. Here C is the tuning paramter just as lambda in regularization parametrs. As we change C we get different value of margins
+
+The biggest value of C when all the points are on the wrong side of teh margins. So there is an error for every single point 
+
+> All the points that are on the wrong side of teh margin are the ones that control in effect the orientation of the margin. So as the points that are invlolved in the orientation if the margin are higher the more stable it beccome. The higher the C the higher the stability. This is the bias variance tradeoff 
+
+The SVM kepps teh units as same we need to standardize the variables.
+
+
+### Feature Expansion
+
+* Enlarge the features by including transformation such as polynomials
+* With these transformations we go from a x dimensional space to `K>p` dimensional space
+* When you project down these additons onto the original dimesnions they would form a non linear decision boundary
+
+
+### Inner product
+
+> Interactions between every combination of points in the input space
+
+* Non linear transformations get wild rather fast hence they are not an appropriate choice. Evn in regression we do not prefer to use degree more than 3 even in case of large variables
+
+* Each observation in dataset is combined with every other data i.e `np2` observations and combined with the intercept to form a support vector classifier
+
+* Most of the alpha values will be zero. The ones wrongly classified outside the margins and on the margins are gonna have non zero alpha values. The ones wrongly classified have the error term associated with them
+
+* If we move a point within the correct classification to other spce in the correct classification its not ginna effect the output
+
+* This sparsity is quite different from the sparsity of the lasso. In lasso we had coefficients that are zero. Her we have the datapoints that are zero
+
+> Sparsity is in the data space not in the feature space
+
+
+
+### Kernel
+
+> The algorithm transfers the input feature space to higher dimension and find a linear dimension solution in that space but can be non linear in the original input space
+
+* Kernel function is a function of two arguments in this case two p vectors. The inner product added with 1 is expanded over `p` dimensional space with `d` degree polynomial degree. The no of basis function will be `p+d` permutation `d`
+
+* Once again the alpha will be zero in the wrongly classified Kernels come into the support vector machine
+
+* One of the most famous kernel is [radial basis function kernel](https://en.wikipedia.org/wiki/Radial_basis_function_kernel). This is a high dimensional spcae yet the kernel computes the producct for us
+
+* Even though it is infinite dimensional feature space most of the dimensions are squashed down. Most of the ones squashed down are wiggly ones
+
+In polynomial kernels when the d is million and with feature expalnsion things will get out of control whereas in kernel beacuse of the squashing down things get easier. However, since the SVM can do this without actually forming the features, you can raise the degree as high as you like and it will still work
+
+A plot between the True positives and the false positives is plotted for different values of gamma in radial kernel. The larger the gamma the more wiggly the curve. On the training data we observe that by decreasing gamm we o worse on the training data
+
+
+### Usage of SVM
+1. When the classes are easily seperble better than LR and comparable with LDA
+2. When the classes cannot be seperable LR with a ridge penalty is good
+3. when probability is needed LR is best as in cases related to cancer predicion we mi8 need the probability
+
+
+
+
+
+#### Pros of SVM:
+1. It works really well with clear margin of separation
+2. It is effective in high dimensional spaces.
+3. It is effective in cases where number of dimensions is greater than the number of samples.
+4. It uses a subset of training points in the decision function (called support vectors), so it is also memory efficient.
+5. Versatile i.e can change the kernel functions. The common kernel function have been given but we can cutmoize according to the requirement
+
+
+#### Cons of SVM:
+1. It doesn't perform well, when we have large data set because the required training time is higher. The computational time for training is high
+2. It also doesn't perform very well, when the data set has more noise i.e. target classes are overlapping
+3. SVM doesn't directly provide probability estimates, these are calculated using an expensive five-fold cross-validation. It is related SVC method of Python scikit-learn library.
+
+
+#### Conclusion
+Suppor Vector Machines are powerful classification algorithm. When used in conjunction with random forest and other machine learning tools, they give a very different dimension to ensemble models. They become very useful in cases where the number of variables are high thn the observations and when very high predictive power is required
+
+
+
+
+
+
+
+
+# 10. Unsupervised Learning
+
+Toddler is asked to seperate a set of 10 houses and cars made of lego. He makes the distinction based on the similar apperance
+
+
+## Principal Component Analysis
+> Low dimensional representation of the data that explains good fraction of variance
+
+One of teh most widely used tool in applied statistics
+
+* For a `n x p` dataset we first center all the variables(p) i.e the column means of all the P variables is zero and the Standard deviation to be 1.
+
+* Eigen values are produced in such a way that their least squares sum is equal to 1. The meaning of this  eigen vectors is that the data varies the most along these vectors.
+
+* Then n Z values are generated whose sum has the highest variance. This sum is  the first principal component
+
+* The second principal component has maximum variance among all teh linear combinations that are __uncorrelated__ to the first principal component. 
+
+* Being uncorrelated to the first principal component means that the second principal component is orthognal to teh first one. At most there can be a min(n-1,p) principal components
+
+> The component explaing the largest variance is the highest principal component
+
+#### Another Interpretation of PCA
+
+The hyper plane passess throught eh middle of these points. The disance from the hyper plane for each point is calculated and the sum of squares of those points gives a plane which is closest to qll the data.
+
+* The hyperplane is defined in terms of the two largets PC i.e the two direction vectors are the ones that define them are the ones of the PC
+
+* In linear regression we focus on the distance Y which is not the perpendicular distance but in PCA we foccus on teh shortest distance from the hyper plane
+
+* In PCA we are taking all teh n dimesnions into consideration before calculating the mean square distance
+
+
+#### why does scaling matter
+
+* If one variable has far bigger variance than any other variable then that variable dominates the first principal component. Hence we standardize teh variable to be measured on a equal sscale
+
+$Total variance  = Sum of all teh variances$
+
+> The sum of variance of  all teh variables is equal to teh sum of variance of all the Z with the no of PC being `min(n-1, p)`
+
+#### Proportion of variance explained[PVE]
+
+$PVE of the mth principal component = Z of mth principal component/Sum of variance of X$
+
+* PVE is a value between 0 and 1 and its value decrease with the increase in teh principal component. The sum of PVE of all teh PC is equal to 1. The PVE decrease because the principal components are uncorrelated to each other.
+
+* There is no simple answer to how many PC we need but a rough estimate is If the first n principal compenents can explain about 95% of the variance then they are sufficent for how many PC we need
+
+* Ther is no Y variable(response) to conduct Cross Validation on this. If in regression we have a large no of variables then we conduct a PCA and Cross validate it. In that case Cv is useful
+
+* If there is a elbow in the scree plot then we can say that the no of Principal components before that elbow are sufficient to explain PCA 
+
+
+
+## K-Menas Clustering
+Pre-specified number of clusters
+
+> Varibales that tend to divide tehh llcusters easily and significantly also tend to have high variance. Hence there is a significant relation between PCA and clustering
+
+A good cluster is defined as one for which teh within cluster variation is as minimum as possible i.e we minimize teh within clluster variation[Eucledian distance]
+
+#### Process of k-means:
+1. Each observation is assigned to any one of teh pre-specified no of clusters.
+2. The centroid is calculated for teh each clusters and each point is assigned to the closest cluster and the loop continues until no changes can be made
+
+
+#### Disadvantages:
+1. The beginning of the alogorithm is the random asignment of point to the no of clusters you are using.
+
+2. Specify the no of clusters
+
+
+
+## Hierarchial Cluatering
+
+1. Identifies the distance between each points and then form a link between the closest points. Then the next closest points are also linked. 
+
+2. Then the next higher no of groups are clusetred and then the clusters are grouped within 
+
+> Importnat things to be considered in hierarchial clustering:
+1. Which dissimilarity measure should be used
+2. What type of linkage should be used
+3. How many clusters to use
+4. which features to be used in clustering
+
+
+
+#### Linkages:
+
+##### Complete Linkage:
+Distance between the farthest points 
+
+##### Single Linkage :
+Distance between the closest points. It tends to produce long string clusters
+
+##### Average Linkage:
+Distancebetween all the points and avergaing them
+
+##### Centroid Linkage:
+Centroid for each cluster is atken and then distance between them is taken. This is more common in __genomics__
+
+> Complete and averge are the most widely used
+
+
+#### Choice of Dissimilarity measure
+
+Correlation based distance: Observation are close is measured in terms of corrleation between teh variables
+
+
+
+
+
+
+
+
